@@ -29,7 +29,7 @@
 #define N1_NOUTP_UNITS        N1_NLABELS
 
 #define N1_NHID_LAYERS        1
-#define N1_DIST_FUNC					logdist
+#define N1_DIST_FUNC	      logdist
 
 /* If HIDL_SIZES array is empty, then NHID_LAYERS should be 0 */
 const size_t N1_NHID_UNITS[N1_NHID_LAYERS] = { 20 };
@@ -53,7 +53,7 @@ const size_t N1_NHID_UNITS[N1_NHID_LAYERS] = { 20 };
   #define N2_NOUTP_UNITS        N2_NLABELS
 
   #define N2_NHID_LAYERS        1
-	#define N2_DIST_FUNC					sqdist
+  #define N2_DIST_FUNC		sqdist
 
   const size_t N2_NHID_UNITS[N2_NHID_LAYERS] = { 25 };
 
@@ -71,7 +71,7 @@ const size_t N1_NHID_UNITS[N1_NHID_LAYERS] = { 20 };
   #define N3_NOUTP_UNITS        N3_NLABELS
 
   #define N3_NHID_LAYERS        1
-	#define N3_DIST_FUNC					sqdist
+  #define N3_DIST_FUNC		sqdist
 
   const size_t N3_NHID_UNITS[N3_NHID_LAYERS] = { 30 };
 
@@ -89,7 +89,7 @@ const size_t N1_NHID_UNITS[N1_NHID_LAYERS] = { 20 };
   #define N4_NOUTP_UNITS        N4_NLABELS
   
   #define N4_NHID_LAYERS        1
-	#define N4_DIST_FUNC					logdist
+  #define N4_DIST_FUNC		logdist
 
   const size_t N4_NHID_UNITS[N4_NHID_LAYERS] = { 35 };
 
