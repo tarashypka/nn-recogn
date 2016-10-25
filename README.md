@@ -16,9 +16,9 @@
    * Without thread pool
    ```
    $ gcc -Wall \
-         -o ./build/nn.o \
-         -g ./src/{nn.c,nn_impl.c,nn_alloc.c,nn_rnd.c} \
-         -lm
+          -o ./build/nn.o \
+          -g ./src/{nn.c,nn_impl.c,nn_alloc.c,nn_rnd.c} \
+          -lm
    ```
    * With thread pool
     ```
