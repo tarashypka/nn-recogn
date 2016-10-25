@@ -11,6 +11,7 @@
 #include "../lib/thpool.h"
 #endif
 
+typedef void (*setfunc_)(double_ **, const size_t, const size_t);
 /**
  *
  * Functions that set input/expected output for the network
@@ -24,8 +25,8 @@
  * that will generate random input/expected output
  *
  **/
-static void (*SETINP) (double_ **, const size_t, const size_t) = &rnd_mtx_gen;
-static void (*SETOUTP)(double_ **, const size_t, const size_t) = &rnd_mtx_gen;
+const static setfunc_ SETINP  = rnd_mtx_gen;
+const static setfunc_ SETOUTP = rnd_mtx_gen;
 
 int main (void)
 {
@@ -56,7 +57,7 @@ static void main_exit_ (void)
 
 static double_ **getinp_ (
     const size_t nexamples, const size_t nfeatures,
-    void (*setinp)(double_ **, const size_t, const size_t))
+    const setfunc_ setinp)
 {
   double_ **inp;
 
@@ -70,7 +71,7 @@ static double_ **getinp_ (
 
 static double_ **getoutp_ (
     const size_t nexamples, const size_t nlabels,
-    void (*setoutp)(double_ **, const size_t, const size_t))
+    const setfunc_ setoutp)
 {
   double_ **outp;
 
