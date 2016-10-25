@@ -23,9 +23,9 @@
    * With thread pool
     ```
     $ gcc -Wall \
-      -o ./build/nn.o \
-      -g ./src/{nn.c,nn_impl.c,nn_alloc.c,nn_rnd.c} ./lib/thpool.c \
-      -lm -pthread
+          -o ./build/nn.o \
+          -g ./src/{nn.c,nn_impl.c,nn_alloc.c,nn_rnd.c} ./lib/thpool.c \
+          -lm -pthread
     ```
 
 3. Train neural network(s)
