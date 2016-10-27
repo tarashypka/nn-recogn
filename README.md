@@ -34,5 +34,5 @@
     $ ./build/nn.o
     ```
 
-[1] Another Thread pool for C ([mbrossard/threadpool](https://github.com/mbrossard/threadpool)) gives almost the same performance results.
+[1] Another Thread pool for C ([mbrossard/threadpool](https://github.com/mbrossard/threadpool)) gives almost the same performance results.  
 [2] The result of using 4 threads instead of one and training 4 neural networks simultaneously leads to ~2x increase in the watch time and ~2x decrease in the clock time. 
