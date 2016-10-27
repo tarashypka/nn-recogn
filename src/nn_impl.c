@@ -23,32 +23,70 @@
  *
  **/
 
+/**
+ *
+ * @struct nnlayer
+ * @brief Neural network layer (input, hidden or output)
+ *
+ * @var prev          previos layer, NULL if layer is input
+ * @var next          next layer, NULL if layer is output
+ * @var units         non-bias units activation values
+ * @var nunits        # of units in layer
+ * @var weights       outcoming weights from units in this layer
+ *                                        to units in next layer
+ *
+ **/
 typedef struct nnlayer_ 
 {
-  struct nnlayer_ *prev;    /* previos layer, NULL if layer is input */
-  struct nnlayer_ *next;    /*    next layer, NULL if layer is output */
-  double_        *units;    /* non-bias units activation values */
-  size_t         nunits;    /* # of units in layer */
-  double_     **weights;    /* outcoming weights from units in this layer 
-                                                   to units in next layer */
+  struct nnlayer_ *prev;
+  struct nnlayer_ *next;
+  double_        *units;
+  size_t         nunits;
+  double_     **weights;
+
 } nnlayer_;
 
+/**
+ *
+ * @struct nnetwork
+ * @brief Neural network
+ *
+ * @var id            network id
+ * @var inp           input layer
+ * @var outp          output layer
+ * @var expoutp       expected result for particular input
+ * @var nhid          # of hidden layers
+ *
+ **/
 typedef struct nnetwork_ 
 {
-  nnlayer_    *inp;       /*  input layer */
-  nnlayer_   *outp;       /* output layer */
-  double_ *expoutp;       /* expected result for particular input */
-  size_t      nhid;       /* # of hidden layers */
+  size_t        id;
+  nnlayer_    *inp;
+  nnlayer_   *outp;
+  double_ *expoutp;
+  size_t      nhid;
 
 } nnetwork_;
 
+/**
+ *
+ * @struct nnparams
+ * @brief Learning parameters
+ *
+ * @var nexamples     # of training examples
+ * @var niters        # of iterations to backpropagate
+ * @var learn_p       learning parameter
+ * @var regur_p       regularization parameter, 0 if non-regularized
+ * @var dist          distance function
+ *
+ **/
 typedef struct nnparams_ 
 {
-  size_t nexamples;       /* # of training examples */
-  size_t    niters;       /* # of iterations to backpropagate */
-  double_  learn_p;       /*       learning parameter */
-  double_  regur_p;       /* regularization parameter, 0 if non-regularized */
-  dist_f      dist;       /* distance function */
+  size_t nexamples;
+  size_t    niters;
+  double_  learn_p;
+  double_  regur_p;
+  dist_f      dist;
 
 } nnparams_;
 
@@ -193,13 +231,15 @@ void nn_weights_init (nnetwork_ *netw_p, double_ ***ws)
 }
 
 nnetwork_ *
-nn_alloc (const size_t ninpunits, const size_t noutpunits,
+nn_alloc (const size_t id,
+          const size_t ninpunits, const size_t noutpunits,
           const size_t nhid,      const size_t *nhidunits)
 {
   nnetwork_ *netw_p;
   if ((netw_p = malloc (sizeof *netw_p)) == NULL)
     nn_exit_ (netw_p);
 
+  netw_p->id   = id;
   netw_p->nhid = nhid;
 
   /* Allocate and define layers */
@@ -274,8 +314,7 @@ static void compute_hypotheses_ (nnetwork_ *netw_p)
     feedforward_ (curr->next);
 }
 
-static const double_ costfunc_example (
-    nnetwork_ *netw_p, dist_f dist)
+static const double_ costfunc_example_ (nnetwork_ *netw_p, dist_f dist)
 {
   /* Feedforward propagation: set output layer units activations */
   compute_hypotheses_ (netw_p);
@@ -285,7 +324,7 @@ static const double_ costfunc_example (
     {
       double_ y_k = netw_p->expoutp[k];
       double_ h_k = netw_p->outp->units[k];
-      cost -= dist (y_k, h_k);
+      cost += dist (y_k, h_k);
     }
   return cost;
 }
@@ -302,11 +341,11 @@ static const double_ nn_regur_ (nnetwork_ *netw_p)
         /* don't regularize bias unit */
         for (size_t j = N_BIAS; j < N_BIAS + ncurr; j++)
           {
-            double_ weight_i_j = curr->weights[i][j];
-            regur += weight_i_j * weight_i_j;
+            double_ weight_ij = curr->weights[i][j];
+            regur += weight_ij * weight_ij;
           }
     }
-  return regur / 2;
+  return regur;
 }
 
 const double_ sqdist (const double_ x, const double_ y)
@@ -324,18 +363,20 @@ nn_costfunc (nnetwork_ *netw_p, double_ **inps, double_ **outps,
              nnparams_ *nparams_p)
 {
   double_ cost = 0.0;
+  double_ lambda = nparams_p->regur_p;
+  size_t       m = nparams_p->nexamples;
 
-  for (size_t i = 0; i < nparams_p->nexamples; i++)
+  for (size_t i = 0; i < m; i++)
     {
       if (nn_example_prop_ (netw_p, inps[i], outps[i]) != 0)
         continue;
-      cost += costfunc_example (netw_p, nparams_p->dist);
+      cost -= costfunc_example_ (netw_p, nparams_p->dist);
     }
 
-  if (nparams_p->regur_p > 0)
-    cost += nparams_p->regur_p * nn_regur_ (netw_p);
+  if (lambda > 0)
+    cost += lambda * nn_regur_ (netw_p) / 2;
 
-  return cost / nparams_p->nexamples;
+  return cost / m;
 }
 
 /* =================== BACKPROPAGATION AND GRADIENT ==================== */
@@ -353,10 +394,10 @@ static void compute_deltas_ (nnetwork_ *netw, double_ **deltas)
   for (size_t k = ndeltas-1; k > 0; k--, curr = curr->prev)
     for (size_t i = 0; i < curr->nunits; i++)
       {
-        double_ deltas_i = 0.0;
+        double_ deltas_ki = 0.0;
         for (size_t j = 0; j < curr->next->nunits; j++)
-          deltas_i += curr->weights[j][N_BIAS+i] * deltas[k][j];
-        deltas[k-1][i] = deltas_i * sigmoid_grad_ (curr->units[i]);
+          deltas_ki += curr->weights[j][N_BIAS+i] * deltas[k][j];
+        deltas[k-1][i] = deltas_ki * sigmoid_grad_ (curr->units[i]);
       }
 }
 
@@ -365,17 +406,18 @@ acc_dweights_ (nnetwork_ *netw, nnparams_ *nparams_p,
              double_ **deltas, double_ ***dweights)
 {
   size_t ndweights = N_INP_LAYERS + netw->nhid;
+  double_ lambda = nparams_p->regur_p;
+  size_t       m = nparams_p->nexamples;
 
   nnlayer_ *curr = netw->inp;
   for (size_t k = 0; k < ndweights; k++, curr = curr->next)
     for (size_t i = 0; i < curr->next->nunits; i++)
       for (size_t j = 0; j < curr->nunits; j++)
         {
-          double_ dweight_j = deltas[k][i] * curr->units[j];
-          if (nparams_p->regur_p > 0)
-            dweight_j += nparams_p->regur_p * curr->weights[i][N_BIAS+j];
-          dweights[k][i][j] += 
-            nparams_p->learn_p * dweight_j / nparams_p->nexamples;
+          double_ dweight_kij = deltas[k][i] * curr->units[j];
+          if (lambda > 0)
+            dweight_kij += lambda * curr->weights[i][N_BIAS+j];
+          dweights[k][i][j] += dweight_kij / m;
         }
 }
 
@@ -386,6 +428,7 @@ backprop_iter_ (nnetwork_ *netw_p, double_ **inps, double_ **outps,
   /* Backpropagation */
   for (size_t m = 0; m < nparams_p->nexamples; m++)
     {
+      // printf ("[%ld]: m=%ld\n", netw_p->id, m);
       if (nn_example_prop_ (netw_p, inps[m], outps[m]) != 0)
         continue;
 
@@ -419,7 +462,7 @@ static void free_deltas_ (nnetwork_ *netw_p, double_ **deltas)
 
 static double_ ***alloc_dweights_ (nnetwork_ *netw_p)
 {
-  size_t ndweights = N_INP_LAYERS + netw_p->nhid;
+  size_t    ndweights = N_INP_LAYERS + netw_p->nhid;
   double_ ***dweights = malloc (ndweights * sizeof *dweights);
   size_t i = 0;
 
@@ -440,7 +483,7 @@ static void free_dweights_ (nnetwork_ *netw_p, double_ ***dweights)
     free_mtx (*dweights_p++, curr->next->nunits);
 }
 
-static void reset_weights_ (nnetwork_ *netw_p, double_ ***dweights)
+static void reset_weights_ (nnetwork_ *netw_p, double_ ***dweights, double_ alpha)
 {
   size_t k = 0;
   for (nnlayer_ *curr = netw_p->inp; curr != netw_p->outp; curr = curr->next)
@@ -449,7 +492,7 @@ static void reset_weights_ (nnetwork_ *netw_p, double_ ***dweights)
       size_t nnext = curr->next->nunits;
       for (size_t i = 0; i < nnext; i++)
         for (size_t j = 0; j < N_BIAS + ncurr; j++)
-          curr->weights[i][j] -= dweights[k][i][j];
+          curr->weights[i][j] -= alpha * dweights[k][i][j];
       k++;
     }
 }
@@ -461,17 +504,17 @@ nn_backprop (nnetwork_ *netw_p, double_ **inps, double_ **outps,
   double_  **deltas   = alloc_deltas_   (netw_p);
   double_ ***dweights = alloc_dweights_ (netw_p);
 
-  puts ("Training neural network ...");
+  printf ("[%ld]: Training neural network ...\n", netw_p->id);
   for (size_t i = 0; i < nparams_p->niters; i++)
     {
-      printf ("Iteration %4ld | cost = %g\n",
-               i+1, nn_costfunc (netw_p, inps, outps, nparams_p));
+      printf ("[%ld]: Iteration %4ld | cost = %g\n",
+               netw_p->id, i+1, nn_costfunc (netw_p, inps, outps, nparams_p));
 
       /* Feedforward and then backpropagate to find dweights */
       backprop_iter_ (netw_p, inps, outps, nparams_p, deltas, dweights);
 
       /* Modify network weights according to computed dweights */
-      reset_weights_ (netw_p, dweights);
+      reset_weights_ (netw_p, dweights, nparams_p->learn_p);
     }
 
   /* Free memory from delta vectors and dweights matrices */

@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -8,7 +9,9 @@
 #include "nn_params.h"
 
 #if WITH_THPOOL
+
 #include "../lib/thpool.h"
+
 #endif
 
 typedef void (*setfunc_)(double_ **, const size_t, const size_t);
@@ -25,8 +28,8 @@ typedef void (*setfunc_)(double_ **, const size_t, const size_t);
  * that will generate random input/expected output
  *
  **/
-const static setfunc_ SETINP  = rnd_mtx_gen;
-const static setfunc_ SETOUTP = rnd_mtx_gen;
+static const setfunc_ SETINP  = rnd_mtx_gen;
+static const setfunc_ SETOUTP = rnd_mtx_gen;
 
 int main (void)
 {
@@ -95,19 +98,21 @@ typedef struct backprop_params_
 
 static bprop_params_ *alloc_bparams_ (const size_t i)
 {
+  printf ("[%ld]: Allocating all resource for the job ...\n", i);
   bprop_params_ *bs = malloc (sizeof *bs);
   bs->id   = i;
-  bs->netw = nn_alloc (
-      NINP_UNITS[i], NOUTP_UNITS[i], NHID_LAYERS[i], NHID_UNITS[i]);
+  bs->netw = nn_alloc (i, NINPUNITS[i], NOUTPUNITS[i], 
+                          NHIDLAYERS[i], NHIDUNITS[i]);
   bs->inp  = getinp_  (NEXAMPLES[i], NFEATURES[i], SETINP);
   bs->outp = getoutp_ (NEXAMPLES[i], NLABELS[i],   SETOUTP);
   bs->nparams = nn_alloc_nparams (
-      NEXAMPLES[i], NITERS[i], LEARN_PARAMS[i], REGUR_PARAMS[i], DIST_FUNCS[i]);
+    NEXAMPLES[i], NITERS[i], LEARN_PARAMS[i], REGUR_PARAMS[i], DIST_FUNCS[i]);
   return bs;
 }
 
 static void free_bparams_ (bprop_params_ *bs)
 {
+  printf ("[%ld]: Freeing all resources after the job done...\n", bs->id);
   nn_destroy         (bs->netw);
   nn_destroy_nparams (bs->nparams);
   free_mtx (bs->inp,  NEXAMPLES[bs->id]);
@@ -139,17 +144,19 @@ void train_networks_ (void)
 
         /* Add new job to the thread pool */
         thpool_add_work (thpool, &backprop_, (void *)bs[i]);
-        printf ("[%ld]: Added new job ...\n", i);
+
+        printf ("[%ld]: Added new job to threadpool ...\n", i);
       }
 
     /* Wait for thread pool to finish all jobs */
     thpool_wait (thpool);
 
+    thpool_destroy (thpool);
+
     /* Free all resources */
     for (size_t i = 0; i < NNETWORKS; i++)
       free_bparams_ (bs[i]);
 
-    thpool_destroy (thpool);
   #else
     nn_backprop (bs0->netw, bs0->inp, bs0->outp, bs0->nparams);
     free_bparams_ (bs0);

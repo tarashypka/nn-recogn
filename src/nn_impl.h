@@ -41,6 +41,7 @@ typedef const double_ (*dist_f)(const double_, const double_);
  *
  * @brief Initialize neural network with random Un([0,1]) weights
  *
+ * @param id              network id
  * @param ninpunits       # of units in  input layer
  * @param noutpunits      # of units in output layer
  * @param nhid            # of hidden layers
@@ -52,7 +53,8 @@ typedef const double_ (*dist_f)(const double_, const double_);
  *
  **/
 nnetwork 
-nn_alloc (const size_t ninpunits, const size_t noutpunits,
+nn_alloc (const size_t id,
+          const size_t ninpunits, const size_t noutpunits,
           const size_t nhid,      const size_t *nhidunits);
 
 /**
@@ -127,7 +129,7 @@ void nn_destroy_nparams (nnparams ps);
  *  h_m     = hypof (W, x_m)
  *
  * Here, 
- *   W       - #
+ *   W       - weights
  *   M       - # of examples
  *   y_m (k) - expected result for m'th input example and k'th possible label
  *   h_m (k) - hypothesis      for m'th input example and k'th possible label
